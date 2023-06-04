@@ -1,0 +1,20 @@
+services:
+  back:
+    build:
+      context: ./back
+      dockerfile: Dockerfile
+    container_name: back
+    ports:
+      - 8080:8080
+    volumes:
+      - ./back:/usr/src/app
+
+  front:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+    container_name: front
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./front:/usr/src/app
