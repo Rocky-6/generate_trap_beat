@@ -16,5 +16,12 @@ services:
       dockerfile: Dockerfile
     container_name: front
     ports:
-      - "3000:3000"
+      - 3000:3000
+    volumes:
+      - ./front:/usr/src/app
+
+      - front_node_modules:/usr/src/app/node_modules
     tty: true
+
+volumes:
+  front_node_modules:
