@@ -8,6 +8,7 @@ services:
       - 8080:8080
     volumes:
       - ./back:/usr/src/app
+    tty: true
 
   front:
     build:
@@ -16,5 +17,4 @@ services:
     container_name: front
     ports:
       - "3000:3000"
-    volumes:
-      - ./front:/usr/src/app
+    tty: true
