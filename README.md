@@ -9,3 +9,6 @@ cd generate_trap_beat
 docker compose up
 # access localhost:3000
 ```
+
+# URL
+http://http://52.193.199.206:3000/
