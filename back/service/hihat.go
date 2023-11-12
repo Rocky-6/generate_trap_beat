@@ -1,13 +1,21 @@
-package instruments
+package service
 
 import (
 	"bytes"
+	"context"
 
+	"github.com/Rocky-6/trap/repository"
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/smf"
 )
 
-func MkHihat() ([]byte, error) {
+type hihat struct{}
+
+func NewHihat() repository.InstrumentsRepository {
+	return &hihat{}
+}
+
+func (hihat *hihat) MakeSMF(ctx context.Context) ([]byte, error) {
 	clock := smf.MetricTicks(96)
 	s := smf.New()
 	s.TimeFormat = clock
@@ -15,14 +23,12 @@ func MkHihat() ([]byte, error) {
 	tr.Add(0, smf.MetaMeter(4, 4))
 	tr.Add(0, smf.MetaTempo(140))
 
-	// start
 	tr.Add(0, midi.NoteOn(0, midi.C(5), 100))
 	tr.Add(clock.Ticks64th(), midi.NoteOff(0, midi.C(5)))
 	for i := 0; i < 31; i++ {
 		tr.Add(clock.Ticks8th()-clock.Ticks64th(), midi.NoteOn(0, midi.C(5), 100))
 		tr.Add(clock.Ticks64th(), midi.NoteOff(0, midi.C(5)))
 	}
-	// end
 
 	tr.Close(0)
 	s.Add(tr)

@@ -1,14 +1,26 @@
-package instruments
+package service
 
 import (
 	"bytes"
+	"context"
 	"math/rand"
 
+	"github.com/Rocky-6/trap/repository"
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/smf"
 )
 
-func MkMelody(key string) ([]byte, error) {
+type melody struct {
+	key string
+}
+
+func NewMelody(key string) repository.InstrumentsRepository {
+	return &melody{
+		key: key,
+	}
+}
+
+func (melody *melody) MakeSMF(ctx context.Context) ([]byte, error) {
 	clock := smf.MetricTicks(96)
 	s := smf.New()
 	s.TimeFormat = clock
@@ -16,7 +28,7 @@ func MkMelody(key string) ([]byte, error) {
 	tr.Add(0, smf.MetaMeter(4, 4))
 	tr.Add(0, smf.MetaTempo(140))
 
-	key_note := keyNoteMelody(key)
+	key_note := keyNoteMelody(melody.key)
 	note := uint8(0)
 	tick := uint32(0)
 	n := byte(69)

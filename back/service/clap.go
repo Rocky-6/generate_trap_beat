@@ -1,13 +1,21 @@
-package instruments
+package service
 
 import (
 	"bytes"
+	"context"
 
+	"github.com/Rocky-6/trap/repository"
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/smf"
 )
 
-func MkClap() ([]byte, error) {
+type clap struct{}
+
+func NewClap() repository.InstrumentsRepository {
+	return &clap{}
+}
+
+func (clap *clap) MakeSMF(ctx context.Context) ([]byte, error) {
 	clock := smf.MetricTicks(96)
 	s := smf.New()
 	s.TimeFormat = clock
@@ -15,7 +23,6 @@ func MkClap() ([]byte, error) {
 	tr.Add(0, smf.MetaMeter(4, 4))
 	tr.Add(0, smf.MetaTempo(140))
 
-	// start
 	tr.Add(clock.Ticks4th()*2, midi.NoteOn(0, midi.C(5), 100))
 	tr.Add(clock.Ticks64th(), midi.NoteOff(0, midi.C(5)))
 	tr.Add(clock.Ticks4th()*4-clock.Ticks64th(), midi.NoteOn(0, midi.C(5), 100))
@@ -24,7 +31,6 @@ func MkClap() ([]byte, error) {
 	tr.Add(clock.Ticks64th(), midi.NoteOff(0, midi.C(5)))
 	tr.Add(clock.Ticks4th()*4-clock.Ticks64th(), midi.NoteOn(0, midi.C(5), 100))
 	tr.Add(clock.Ticks64th(), midi.NoteOff(0, midi.C(5)))
-	// end
 
 	tr.Close(0)
 	s.Add(tr)

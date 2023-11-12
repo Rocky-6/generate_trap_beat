@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -9,8 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Rocky-6/trap/database"
-	"github.com/Rocky-6/trap/instruments"
+	"github.com/Rocky-6/trap/service"
 	"github.com/rs/cors"
 )
 
@@ -26,16 +26,70 @@ func main() {
 }
 
 func handleDownload(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
 	key := r.FormValue("key")
 
 	// MIDI データのスライスを取得
-	kickData, _ := instruments.MkKick()
-	clapData, _ := instruments.MkClap()
-	hihatData, _ := instruments.MkHihat()
-	cp := database.DispChord()
-	bassData, _ := instruments.MkBass(key, cp)
-	chordData, _ := instruments.MkChord(key, cp)
-	melodyData, _ := instruments.MkMelody(key)
+	kickRepository := service.NewKick()
+	kickData, err := kickRepository.MakeSMF(ctx)
+	if err != nil {
+		log.Println("Failed to create SMF:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	clapRepository := service.NewClap()
+	clapData, err := clapRepository.MakeSMF(ctx)
+	if err != nil {
+		log.Println("Failed to create SMF:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	hihatRepository := service.NewHihat()
+	hihatData, err := hihatRepository.MakeSMF(ctx)
+	if err != nil {
+		log.Println("Failed to create SMF:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	dbRepository, err := service.NewSqliteClient("trap.db")
+	if err != nil {
+		log.Println("Failed to open db:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	chordInformation, err := dbRepository.Scan(ctx)
+	if err != nil {
+		log.Println("Failed to get chord information:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	bassRepositroy := service.NewBass(key, chordInformation)
+	bassData, err := bassRepositroy.MakeSMF(ctx)
+	if err != nil {
+		log.Println("Failed to create SMF:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	chordRepository := service.NewChord(key, chordInformation)
+	chordData, err := chordRepository.MakeSMF(ctx)
+	if err != nil {
+		log.Println("Failed to create SMF:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	melodyRepository := service.NewMelody(key)
+	melodyData, err := melodyRepository.MakeSMF(ctx)
+	if err != nil {
+		log.Println("Failed to create SMF:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	// 一時的なディレクトリを作成
 	tempDir, err := os.MkdirTemp("", "midi-files")

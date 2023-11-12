@@ -1,14 +1,28 @@
-package instruments
+package service
 
 import (
 	"bytes"
-	"fmt"
+	"context"
 
+	"github.com/Rocky-6/trap/model"
+	"github.com/Rocky-6/trap/repository"
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/smf"
 )
 
-func MkBass(key string, cp [4]string) ([]byte, error) {
+type bass struct {
+	key             string
+	chordInfomation []model.ChordInfomation
+}
+
+func NewBass(key string, chordInformation []model.ChordInfomation) repository.InstrumentsRepository {
+	return &bass{
+		key:             key,
+		chordInfomation: chordInformation,
+	}
+}
+
+func (bass *bass) MakeSMF(ctx context.Context) ([]byte, error) {
 	clock := smf.MetricTicks(96)
 	s := smf.New()
 	s.TimeFormat = clock
@@ -16,24 +30,23 @@ func MkBass(key string, cp [4]string) ([]byte, error) {
 	tr.Add(0, smf.MetaMeter(4, 4))
 	tr.Add(0, smf.MetaTempo(140))
 
-	// start
-	c := bassNote(keyNoteBass(key), cp[0])
+	c := bassNote(keyNoteBass(bass.key), bass.chordInfomation[0].DegreeName)
 	tr.Add(0, midi.NoteOn(0, c, 100))
 	tr.Add(clock.Ticks64th(), midi.NoteOff(0, c))
 
-	c = bassNote(keyNoteBass(key), cp[2])
+	c = bassNote(keyNoteBass(bass.key), bass.chordInfomation[2].DegreeName)
 	tr.Add(clock.Ticks4th()*5-clock.Ticks64th(), midi.NoteOn(0, c, 100))
 	tr.Add(clock.Ticks64th(), midi.NoteOff(0, c))
 
-	c = bassNote(keyNoteBass(key), cp[0])
+	c = bassNote(keyNoteBass(bass.key), bass.chordInfomation[0].DegreeName)
 	tr.Add(clock.Ticks4th()*3-clock.Ticks64th(), midi.NoteOn(0, c, 100))
 	tr.Add(clock.Ticks64th(), midi.NoteOff(0, c))
 
-	c = bassNote(keyNoteBass(key), cp[1])
+	c = bassNote(keyNoteBass(bass.key), bass.chordInfomation[1].DegreeName)
 	tr.Add(clock.Ticks4th()*3-clock.Ticks64th(), midi.NoteOn(0, c, 100))
 	tr.Add(clock.Ticks64th(), midi.NoteOff(0, c))
 
-	c = bassNote(keyNoteBass(key), cp[2])
+	c = bassNote(keyNoteBass(bass.key), bass.chordInfomation[2].DegreeName)
 	tr.Add(clock.Ticks4th()*2+clock.Ticks8th()-clock.Ticks64th(), midi.NoteOn(0, c, 100))
 	tr.Add(clock.Ticks64th(), midi.NoteOff(0, c))
 
@@ -41,39 +54,38 @@ func MkBass(key string, cp [4]string) ([]byte, error) {
 	s.Add(tr)
 
 	buf := new(bytes.Buffer)
-	_, err := s.WriteTo(buf)
-	if err != nil {
+	if _, err := s.WriteTo(buf); err != nil {
 		return nil, err
 	}
 
 	return buf.Bytes(), nil
 }
 
-func bassNote(keyNoteChord uint8, degree_name string) uint8 {
+func bassNote(keyNoteChord uint8, degreeName string) uint8 {
 	root := keyNoteChord
 
 	switch true {
-	case check_regexp(`bVII`, degree_name):
+	case check_regexp(`bVII`, degreeName):
 		root += 10
-	case check_regexp(`VII`, degree_name):
+	case check_regexp(`VII`, degreeName):
 		root += 11
-	case check_regexp(`bVI`, degree_name):
+	case check_regexp(`bVI`, degreeName):
 		root += 8
-	case check_regexp(`VI`, degree_name):
+	case check_regexp(`VI`, degreeName):
 		root += 9
-	case check_regexp(`#IV`, degree_name):
+	case check_regexp(`#IV`, degreeName):
 		root += 6
-	case check_regexp(`IV`, degree_name):
+	case check_regexp(`IV`, degreeName):
 		root += 5
-	case check_regexp(`V`, degree_name):
+	case check_regexp(`V`, degreeName):
 		root += 7
-	case check_regexp(`bIII`, degree_name):
+	case check_regexp(`bIII`, degreeName):
 		root += 3
-	case check_regexp(`III`, degree_name):
+	case check_regexp(`III`, degreeName):
 		root += 4
-	case check_regexp(`bII`, degree_name):
+	case check_regexp(`bII`, degreeName):
 		root += 1
-	case check_regexp(`II`, degree_name):
+	case check_regexp(`II`, degreeName):
 		root += 2
 	default:
 	}
@@ -92,11 +104,5 @@ func keyNoteBass(key string) uint8 {
 			break
 		}
 	}
-
-	if note == 0 {
-		fmt.Println("入力された音階名が不正です")
-		return 0
-	}
-
 	return note
 }
