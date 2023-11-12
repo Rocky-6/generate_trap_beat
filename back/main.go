@@ -32,24 +32,64 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 	// MIDI データのスライスを取得
 	kickRepository := service.NewKick()
 	kickData, err := kickRepository.MakeSMF(ctx)
+	if err != nil {
+		log.Println("Failed to create SMF:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	clapRepository := service.NewClap()
 	clapData, err := clapRepository.MakeSMF(ctx)
+	if err != nil {
+		log.Println("Failed to create SMF:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	hihatRepository := service.NewHihat()
 	hihatData, err := hihatRepository.MakeSMF(ctx)
+	if err != nil {
+		log.Println("Failed to create SMF:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	dbRepository, err := service.NewSqliteClient("trap.db")
+	if err != nil {
+		log.Println("Failed to open db:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 	chordInformation, err := dbRepository.Scan(ctx)
+	if err != nil {
+		log.Println("Failed to get chord information:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	bassRepositroy := service.NewBass(key, chordInformation)
 	bassData, err := bassRepositroy.MakeSMF(ctx)
+	if err != nil {
+		log.Println("Failed to create SMF:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	chordRepository := service.NewChord(key, chordInformation)
 	chordData, err := chordRepository.MakeSMF(ctx)
+	if err != nil {
+		log.Println("Failed to create SMF:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	melodyRepository := service.NewMelody(key)
-	melodyData, _ := melodyRepository.MakeSMF(ctx)
+	melodyData, err := melodyRepository.MakeSMF(ctx)
+	if err != nil {
+		log.Println("Failed to create SMF:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	// 一時的なディレクトリを作成
 	tempDir, err := os.MkdirTemp("", "midi-files")
