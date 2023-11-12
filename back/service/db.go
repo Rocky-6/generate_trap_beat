@@ -6,6 +6,7 @@ import (
 
 	"github.com/Rocky-6/trap/model"
 	"github.com/Rocky-6/trap/repository"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type sqlite3Client struct {
