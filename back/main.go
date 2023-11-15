@@ -15,12 +15,12 @@ import (
 )
 
 func main() {
+	frontHost := os.Getenv("FRONT_HOST")
 	corsHandler := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://localhost:3000"},
+		AllowedOrigins: []string{frontHost},
 		AllowedMethods: []string{"GET"},
 	})
 
-	//http.HandleFunc("/download", handleDownload)
 	http.Handle("/download", corsHandler.Handler(http.HandlerFunc(handleDownload)))
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

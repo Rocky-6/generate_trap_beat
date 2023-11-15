@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
+const API_HOST = process.env.REACT_APP_API_HOST || "http://localhost:8080";
+
 const App = () => {
   const [selectedKey, setSelectedKey] = useState('');
 
@@ -10,7 +12,7 @@ const App = () => {
 
   const handleDownload = async () => {
     try {
-      const response = await axios.get("http://localhost:8080/download?key=" + selectedKey, {
+      const response = await axios.get(`${API_HOST}/download?key=${selectedKey}`, {
         responseType: 'blob',
       });
 
