@@ -2,145 +2,117 @@ package main
 
 import (
 	"archive/zip"
-	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/Rocky-6/trap/service"
-	"github.com/rs/cors"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 func main() {
-	frontHost := os.Getenv("FRONT_HOST")
-	corsHandler := cors.New(cors.Options{
-		AllowedOrigins: []string{frontHost},
-		AllowedMethods: []string{"GET"},
-	})
+	e := echo.New()
 
-	http.Handle("/download", corsHandler.Handler(http.HandlerFunc(handleDownload)))
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	frontHost := os.Getenv("FRONT_HOST")
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{frontHost},
+		AllowMethods: []string{http.MethodGet},
+	}))
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "Hello, World!")
+	})
+	e.GET("/download", handleDownload)
+	e.Logger.Fatal(e.Start(":8080"))
 }
 
-func handleDownload(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
-	key := r.FormValue("key")
+func handleDownload(c echo.Context) error {
+	key := c.QueryParam("key")
 
 	// MIDI データのスライスを取得
 	kickRepository := service.NewKick()
-	kickData, err := kickRepository.MakeSMF(ctx)
+	kickData, err := kickRepository.MakeSMF(c.Request().Context())
 	if err != nil {
-		log.Println("Failed to create SMF:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	clapRepository := service.NewClap()
-	clapData, err := clapRepository.MakeSMF(ctx)
+	clapData, err := clapRepository.MakeSMF(c.Request().Context())
 	if err != nil {
-		log.Println("Failed to create SMF:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	hihatRepository := service.NewHihat()
-	hihatData, err := hihatRepository.MakeSMF(ctx)
+	hihatData, err := hihatRepository.MakeSMF(c.Request().Context())
 	if err != nil {
-		log.Println("Failed to create SMF:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	dbRepository, err := service.NewSqliteClient("trap.db")
 	if err != nil {
-		log.Println("Failed to open db:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
-	chordInformation, err := dbRepository.Scan(ctx)
+	chordInformation, err := dbRepository.Scan(c.Request().Context())
 	if err != nil {
-		log.Println("Failed to get chord information:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	bassRepositroy := service.NewBass(key, chordInformation)
-	bassData, err := bassRepositroy.MakeSMF(ctx)
+	bassData, err := bassRepositroy.MakeSMF(c.Request().Context())
 	if err != nil {
-		log.Println("Failed to create SMF:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	chordRepository := service.NewChord(key, chordInformation)
-	chordData, err := chordRepository.MakeSMF(ctx)
+	chordData, err := chordRepository.MakeSMF(c.Request().Context())
 	if err != nil {
-		log.Println("Failed to create SMF:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	melodyRepository := service.NewMelody(key)
-	melodyData, err := melodyRepository.MakeSMF(ctx)
+	melodyData, err := melodyRepository.MakeSMF(c.Request().Context())
 	if err != nil {
-		log.Println("Failed to create SMF:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	// 一時的なディレクトリを作成
 	tempDir, err := os.MkdirTemp("", "midi-files")
 	if err != nil {
-		log.Println("Failed to create temporary directory:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
 	defer os.RemoveAll(tempDir)
 
 	// MIDI データをファイルに保存
 	err = saveMIDIFile(tempDir+"/kick.mid", kickData)
 	if err != nil {
-		log.Println("Failed to save MIDI file:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	err = saveMIDIFile(tempDir+"/clap.mid", clapData)
 	if err != nil {
-		log.Println("Failed to save MIDI file:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	err = saveMIDIFile(tempDir+"/hihat.mid", hihatData)
 	if err != nil {
-		log.Println("Failed to save MIDI file:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	err = saveMIDIFile(tempDir+"/bass.mid", bassData)
 	if err != nil {
-		log.Println("Failed to save MIDI file:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	err = saveMIDIFile(tempDir+"/chord.mid", chordData)
 	if err != nil {
-		log.Println("Failed to save MIDI file:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	err = saveMIDIFile(tempDir+"/melody.mid", melodyData)
 	if err != nil {
-		log.Println("Failed to save MIDI file:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	// ZIP ファイルを作成
@@ -154,13 +126,16 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 		tempDir + "/melody.mid",
 	})
 	if err != nil {
-		log.Println("Failed to create ZIP file:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	// ZIP ファイルをクライアントに送信
-	sendZIP(w, zipFile)
+	err = sendZIP(c.Response().Writer, zipFile)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func saveMIDIFile(filename string, data []byte) error {
@@ -222,12 +197,10 @@ func addFileToZIP(zipWriter *zip.Writer, file string) error {
 	return err
 }
 
-func sendZIP(w http.ResponseWriter, zipFile string) {
+func sendZIP(w http.ResponseWriter, zipFile string) error {
 	file, err := os.Open(zipFile)
 	if err != nil {
-		log.Println("Failed to open ZIP file:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
 	defer file.Close()
 
@@ -236,8 +209,7 @@ func sendZIP(w http.ResponseWriter, zipFile string) {
 
 	_, err = io.Copy(w, file)
 	if err != nil {
-		log.Println("Failed to send ZIP file:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return err
 	}
+	return nil
 }
