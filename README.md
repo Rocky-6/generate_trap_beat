@@ -13,3 +13,5 @@ docker compose up
 # URL
 Qiita:
 https://qiita.com/Rocky-6/items/8e29ab9a421217f012aa
+
+http://35.200.71.243:3000/
